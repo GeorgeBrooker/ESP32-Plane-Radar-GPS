@@ -1,6 +1,7 @@
 #include "ui/radar_range.h"
 
 #include "ui/radar_theme.h"
+#include "services/compass.h"
 
 #include <Preferences.h>
 #include <cmath>
@@ -15,6 +16,7 @@ constexpr char kPrefsNamespace[] = "planeradar";
 constexpr char kPrefsRangeKey[] = "rangeIdx";
 constexpr char kPrefsMilesKey[] = "useMiles";
 constexpr char kPrefsRunwaysKey[] = "showRwys";
+constexpr char kPrefsHeadingUpKey[] = "hdgUp";
 constexpr uint8_t kDefaultRangeIndex = 1;  // 10 km ring
 constexpr float kKmPerMile = 1.609344f;
 
@@ -22,6 +24,7 @@ Preferences s_prefs;
 uint8_t s_range_index = kDefaultRangeIndex;
 bool s_use_miles = false;
 bool s_show_runways = true;
+bool s_heading_up_mode = false;
 
 void saveRangeIndex() {
   if (!s_prefs.begin(kPrefsNamespace, false)) {
@@ -44,6 +47,14 @@ void saveShowRunways() {
     return;
   }
   s_prefs.putBool(kPrefsRunwaysKey, s_show_runways);
+  s_prefs.end();
+}
+
+void saveHeadingUp() {
+  if (!s_prefs.begin(kPrefsNamespace, false)) {
+    return;
+  }
+  s_prefs.putBool(kPrefsHeadingUpKey, s_heading_up_mode);
   s_prefs.end();
 }
 
@@ -70,6 +81,7 @@ void rangeInit() {
       (saved < kRangePresetCount) ? saved : kDefaultRangeIndex;
   s_use_miles = s_prefs.getBool(kPrefsMilesKey, false);
   s_show_runways = s_prefs.getBool(kPrefsRunwaysKey, true);
+  s_heading_up_mode = s_prefs.getBool(kPrefsHeadingUpKey, false);
   s_prefs.end();
 }
 
@@ -105,6 +117,21 @@ void saveRunwaysFromPortal(const char* checkbox_value) {
   Serial.printf("Runway overlay: %s\n", s_show_runways ? "on" : "off");
 }
 
+bool headingUpMode() { return s_heading_up_mode; }
+
+void saveHeadingUpFromPortal(const char* checkbox_value) {
+  s_heading_up_mode = portalCheckboxChecked(checkbox_value);
+  saveHeadingUp();
+  Serial.printf("Heading-up rotation: %s\n", s_heading_up_mode ? "on" : "off");
+}
+
+float rotationHeadingDeg() {
+  if (!s_heading_up_mode || !services::compass::available()) {
+    return 0.0f;
+  }
+  return services::compass::headingDeg();
+}
+
 void formatRing3Label(char* buf, size_t len, float ring3_km, bool use_miles) {
   if (use_miles) {
     const int mi = static_cast<int>(lroundf(ring3_km / kKmPerMile));
@@ -122,9 +149,11 @@ void formatCurrentRing3Label(char* buf, size_t len) {
 void unitsReset() {
   s_use_miles = false;
   s_show_runways = true;
+  s_heading_up_mode = false;
   if (s_prefs.begin(kPrefsNamespace, false)) {
     s_prefs.remove(kPrefsMilesKey);
     s_prefs.remove(kPrefsRunwaysKey);
+    s_prefs.remove(kPrefsHeadingUpKey);
     s_prefs.end();
   }
 }

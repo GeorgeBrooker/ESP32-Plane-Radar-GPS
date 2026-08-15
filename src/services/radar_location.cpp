@@ -17,6 +17,10 @@ constexpr char kKeyLon[] = "lon";
 double s_lat = config::kDefaultRadarLat;
 double s_lon = config::kDefaultRadarLon;
 
+bool s_has_gps_fix = false;
+double s_gps_lat = 0.0;
+double s_gps_lon = 0.0;
+
 bool parseCoord(const char* text, double* out) {
   if (text == nullptr || text[0] == '\0') {
     return false;
@@ -60,9 +64,9 @@ void init() {
   prefs.end();
 }
 
-double lat() { return s_lat; }
+double lat() { return s_has_gps_fix ? s_gps_lat : s_lat; }
 
-double lon() { return s_lon; }
+double lon() { return s_has_gps_fix ? s_gps_lon : s_lon; }
 
 bool saveFromStrings(const char* lat_str, const char* lon_str) {
   double lat = 0.0;
@@ -87,5 +91,15 @@ void clear() {
   s_lat = config::kDefaultRadarLat;
   s_lon = config::kDefaultRadarLon;
 }
+
+void setGpsFix(double lat, double lon) {
+  s_has_gps_fix = true;
+  s_gps_lat = lat;
+  s_gps_lon = lon;
+}
+
+void clearGpsFix() { s_has_gps_fix = false; }
+
+bool usingGpsFix() { return s_has_gps_fix; }
 
 }  // namespace services::location

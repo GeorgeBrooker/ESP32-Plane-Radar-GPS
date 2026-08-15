@@ -15,7 +15,6 @@
 #include "ui/radar_theme.h"
 #include "ui/runway_overlay.h"
 
-namespace fonts = lgfx::v1::fonts;
 
 namespace ui {
 namespace radar {
@@ -217,7 +216,8 @@ float innerRingMaxKm() {
                      static_cast<float>(radar::kGridOuterRadius));
 }
 
-/** Flat lat/lon as x/y: 1° ≈ 111 km, north = screen up. */
+/** Flat lat/lon as x/y: 1° ≈ 111 km; north = screen up unless heading-up mode
+ * rotates the grid so travel direction faces up. */
 void latLonToScreen(float lat, float lon, int* out_x, int* out_y) {
   const float outer_km = radar::rangeCurrent().outer_km;
   const float px_per_km = static_cast<float>(radar::kGridOuterRadius) / outer_km;
@@ -227,8 +227,13 @@ void latLonToScreen(float lat, float lon, int* out_x, int* out_y) {
   float dist_km = 0.0f;
   offsetKmFromCenter(lat, lon, &dx_km, &dy_km, &dist_km);
 
-  *out_x = radar::kCenterX + static_cast<int>(lroundf(dx_km * px_per_km));
-  *out_y = radar::kCenterY - static_cast<int>(lroundf(dy_km * px_per_km));
+  constexpr float kDegToRad = 0.01745329252f;
+  const float bearing_rad = atan2f(dx_km, dy_km) -
+                           radar::rotationHeadingDeg() * kDegToRad;
+  const float dist_px = dist_km * px_per_km;
+
+  *out_x = radar::kCenterX + static_cast<int>(lroundf(sinf(bearing_rad) * dist_px));
+  *out_y = radar::kCenterY - static_cast<int>(lroundf(cosf(bearing_rad) * dist_px));
 }
 
 bool isInsideOuterRingKm(float dist_km) { return dist_km <= innerRingMaxKm(); }
@@ -260,7 +265,9 @@ bool beyondRingEdgeDotFromLatLon(float lat, float lon, int* out_x, int* out_y) {
   const int cx = radar::kCenterX;
   const int cy = radar::kCenterY;
   const int rim_r = radar::kCenterX - radar::kBeyondRingScreenMarginPx;
-  const float angle_rad = atan2f(dx_km, dy_km);
+  constexpr float kDegToRad = 0.01745329252f;
+  const float angle_rad =
+      atan2f(dx_km, dy_km) - radar::rotationHeadingDeg() * kDegToRad;
 
   *out_x = cx + static_cast<int>(lroundf(sinf(angle_rad) * rim_r));
   *out_y = cy - static_cast<int>(lroundf(cosf(angle_rad) * rim_r));
@@ -533,9 +540,11 @@ void drawAircraft() {
     const size_t i = items[d].index;
     const int x = items[d].x;
     const int y = items[d].y;
-    drawSpeedVector(x, y, planes[i].nose_deg, planes[i].track_deg,
+    drawSpeedVector(x, y, planes[i].nose_deg - radar::rotationHeadingDeg(),
+                    planes[i].track_deg - radar::rotationHeadingDeg(),
                     planes[i].gs_knots, radar::kColorTrackVector);
-    drawHeadingTriangle(x, y, planes[i].nose_deg, radar::kColorAircraft);
+    drawHeadingTriangle(x, y, planes[i].nose_deg - radar::rotationHeadingDeg(),
+                        radar::kColorAircraft);
   }
   for (size_t d = 0; d < draw_count; ++d) {
     const size_t i = items[d].index;
@@ -617,12 +626,33 @@ void drawCardinalLabels() {
   const int cx = radar::kCenterX;
   const int cy = radar::kCenterY;
   const int edge = radar::kSize - 1;
+  const float heading_deg = radar::rotationHeadingDeg();
 
-  drawCardinalLabel("N", cx, radar::kCardinalNorthOffsetY, textdatum_t::top_center);
-  drawCardinalLabel("S", cx, edge + radar::kCardinalSouthOffsetY,
-                    textdatum_t::bottom_center);
-  drawCardinalLabel("W", 0, cy, textdatum_t::middle_left);
-  drawCardinalLabel("E", edge, cy, textdatum_t::middle_right);
+  if (heading_deg == 0.0f) {
+    drawCardinalLabel("N", cx, radar::kCardinalNorthOffsetY, textdatum_t::top_center);
+    drawCardinalLabel("S", cx, edge + radar::kCardinalSouthOffsetY,
+                      textdatum_t::bottom_center);
+    drawCardinalLabel("W", 0, cy, textdatum_t::middle_left);
+    drawCardinalLabel("E", edge, cy, textdatum_t::middle_right);
+    return;
+  }
+
+  // Heading-up mode: N/S/E/W orbit the ring at the current rotation.
+  constexpr float kDegToRad = 0.01745329252f;
+  struct Cardinal {
+    const char* label;
+    float bearing_deg;
+  };
+  constexpr Cardinal kCardinals[] = {
+      {"N", 0.0f}, {"E", 90.0f}, {"S", 180.0f}, {"W", 270.0f}};
+  for (const auto& c : kCardinals) {
+    const float rad = (c.bearing_deg - heading_deg) * kDegToRad;
+    const int x = cx + static_cast<int>(
+                          lroundf(sinf(rad) * radar::kCardinalRotatedRadiusPx));
+    const int y = cy - static_cast<int>(
+                          lroundf(cosf(rad) * radar::kCardinalRotatedRadiusPx));
+    drawCardinalLabel(c.label, x, y, textdatum_t::middle_center);
+  }
 }
 
 int scaleLabelAnchorX(int cx, int outer_radius) {

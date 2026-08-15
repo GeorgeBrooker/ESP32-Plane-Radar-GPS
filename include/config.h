@@ -55,6 +55,26 @@ constexpr float kAdsbFetchRadiusScale = 1.0f;
 /** false = hide aircraft with alt_baro "ground"; true = show them too. */
 constexpr bool kAdsbShowGroundAircraft = false;
 
+// --- GPS module (u-blox NEO-6M/8M, UART/NMEA via TinyGPS++) ---
+/** Free GPIO on the C3 Super Mini (UART0 pins, freed by USB CDC boot mode). */
+constexpr int kGpsPinRx = 20;  // ESP32 RX <- GPS TX
+constexpr int kGpsPinTx = 21;  // ESP32 TX -> GPS RX
+constexpr uint32_t kGpsBaud = 9600;
+/** Poll GPS serial buffer this often (ms); cheap, can be every loop. */
+constexpr unsigned long kGpsPollIntervalMs = 200;
+/** Ignore fixes older than this (ms) — falls back to stored/manual location. */
+constexpr unsigned long kGpsFixStaleMs = 5000;
+
+// --- Compass (QMC5883L magnetometer, I2C) ---
+constexpr int kCompassPinSda = 5;
+constexpr int kCompassPinScl = 6;
+constexpr uint8_t kCompassI2cAddr = 0x2C;
+constexpr unsigned long kCompassPollIntervalMs = 100;
+/** Low-pass filter weight for new heading samples (0..1; higher = more responsive). */
+constexpr float kCompassSmoothingAlpha = 0.25f;
+/** Add local magnetic declination (deg) here to report true instead of magnetic north. */
+constexpr float kCompassDeclinationDeg = 0.0f;
+
 // --- UI colors (RGB565) — status screens ---
 constexpr uint16_t kColorBlack = 0x0000;
 constexpr uint16_t kColorYellow = 0xFFE0;

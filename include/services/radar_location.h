@@ -15,4 +15,13 @@ bool saveFromStrings(const char* lat_str, const char* lon_str);
 /** Clear stored coordinates (e.g. with WiFi credential reset). */
 void clear();
 
+/**
+ * Live GPS fix takes over lat()/lon() from the stored/manual value while
+ * present; not persisted (GPS re-acquires on boot). Call every loop when
+ * services::gps::hasFix() is true; call clearGpsFix() when the fix is lost.
+ */
+void setGpsFix(double lat, double lon);
+void clearGpsFix();
+bool usingGpsFix();
+
 }  // namespace services::location

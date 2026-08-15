@@ -53,4 +53,11 @@ void formatCurrentRing3Label(char* buf, size_t len);
 /** Reset distance units to km (e.g. with WiFi credential wipe). */
 void unitsReset();
 
+/** Heading-up mode: rotate the grid so travel direction (compass) faces up. */
+bool headingUpMode();
+void saveHeadingUpFromPortal(const char* checkbox_value);
+/** Effective rotation (deg) to apply to the display: 0 unless heading-up mode
+ * is on and a compass is present. */
+float rotationHeadingDeg();
+
 }  // namespace ui::radar

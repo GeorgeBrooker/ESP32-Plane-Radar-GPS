@@ -11,7 +11,6 @@
 #include "ui/radar_range.h"
 #include "ui/radar_theme.h"
 
-namespace fonts = lgfx::v1::fonts;
 
 namespace ui::runway {
 namespace {
@@ -91,8 +90,13 @@ void latLonToScreen(float lat, float lon, int* out_x, int* out_y) {
   float dist_km = 0.0f;
   offsetKmFromCenter(lat, lon, &dx_km, &dy_km, &dist_km);
 
-  *out_x = radar::kCenterX + static_cast<int>(lroundf(dx_km * px_per_km));
-  *out_y = radar::kCenterY - static_cast<int>(lroundf(dy_km * px_per_km));
+  constexpr float kDegToRad = 0.01745329252f;
+  const float bearing_rad = atan2f(dx_km, dy_km) -
+                           radar::rotationHeadingDeg() * kDegToRad;
+  const float dist_px = dist_km * px_per_km;
+
+  *out_x = radar::kCenterX + static_cast<int>(lroundf(sinf(bearing_rad) * dist_px));
+  *out_y = radar::kCenterY - static_cast<int>(lroundf(cosf(bearing_rad) * dist_px));
 }
 
 int distSqFromCenter(int x, int y) {

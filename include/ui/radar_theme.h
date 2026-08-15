@@ -21,6 +21,8 @@ constexpr int kScaleGapFromOuterRing = 6;
 
 /** Target cap height (px) for N/S/E/W. */
 constexpr int kCardinalLabelHeightPx = 14;
+/** Radius (px) for N/S/E/W labels when rotated in heading-up mode. */
+constexpr int kCardinalRotatedRadiusPx = kCenterX - 12;
 /** Scale label is this many px shorter than cardinals. */
 constexpr int kScaleBelowCardinalPx = 3;
 
