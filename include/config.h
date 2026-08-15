@@ -65,15 +65,10 @@ constexpr unsigned long kGpsPollIntervalMs = 200;
 /** Ignore fixes older than this (ms) — falls back to stored/manual location. */
 constexpr unsigned long kGpsFixStaleMs = 5000;
 
-// --- Compass (QMC5883L magnetometer, I2C) ---
-constexpr int kCompassPinSda = 5;
-constexpr int kCompassPinScl = 6;
-constexpr uint8_t kCompassI2cAddr = 0x2C;
+// --- Compass (QMC5883P magnetometer) ---
+constexpr int kCompassPinSda = GPIO_NUM_5;
+constexpr int kCompassPinScl = GPIO_NUM_6;
 constexpr unsigned long kCompassPollIntervalMs = 100;
-/** Low-pass filter weight for new heading samples (0..1; higher = more responsive). */
-constexpr float kCompassSmoothingAlpha = 0.25f;
-/** Add local magnetic declination (deg) here to report true instead of magnetic north. */
-constexpr float kCompassDeclinationDeg = 0.0f;
 
 // --- UI colors (RGB565) — status screens ---
 constexpr uint16_t kColorBlack = 0x0000;

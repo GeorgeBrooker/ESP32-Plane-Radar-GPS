@@ -2,7 +2,7 @@
 
 namespace services::compass {
 
-/** Start I2C and configure the QMC5883L. Call once during setup. */
+/** Start I2C and configure the QMC5883P. Call once during setup. */
 void init();
 
 /** True if the sensor ACKed on the bus during init(). */

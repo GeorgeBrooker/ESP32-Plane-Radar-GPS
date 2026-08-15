@@ -14,6 +14,9 @@ bool hasFix();
 double lat();
 double lon();
 
+/** local mangeticDeclination */
+float magneticDeclination();
+
 /** Ground speed/course, only meaningful when hasFix() is true. */
 float speedKnots();
 float courseDeg();
