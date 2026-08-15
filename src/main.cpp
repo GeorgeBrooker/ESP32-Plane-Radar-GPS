@@ -135,7 +135,8 @@ void setup() {
   services::gps::init();
   services::compass::init();
   ui::radar::rangeInit();
-  services::adsb::setPollFn(wifiLoop);
+  services::adsb::init();
+  services::adsb::startWorker();
 
   if (wifiSetupConnect()) {
     showRadarIfConnected();
@@ -170,13 +171,12 @@ void loop() {
     g_wifi_down_since = 0;
     if (!g_radar_visible) {
       showRadarIfConnected();
-    } else if (millis() - g_last_adsb_fetch_ms >= config::kAdsbFetchIntervalMs) {
-      g_last_adsb_fetch_ms = millis();
-      fetchAndDrawAircraft();
+    } else if (services::adsb::consumeUpdate()) {
+      ui::radarDisplayRefreshAircraft();
     } else if (location_moved) {
       ui::radarDisplayDraw();
     }
   }
 
-  delay(10);
+  delay(15);
 }

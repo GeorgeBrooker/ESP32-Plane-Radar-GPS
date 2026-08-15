@@ -20,6 +20,8 @@ namespace { // Begin Private Namespace
 // Begin Public namespace
 void init() {
     Wire.begin(config::kCompassPinSda, config::kCompassPinScl);
+    Wire.setClock(100000);
+    Wire.setTimeout(10);
     Serial.println("Initialising QMC magnetometer chip...");
     if (!qmc.begin()) {
         Serial.println("@@ Failed to find QMC5883P chip! @@");
@@ -45,9 +47,9 @@ void poll() {
             float heading = atan2(y, x);
             
             // add magnetic declination
-            float declinationDeg = services::gps::magneticDeclination();
-            float declinationRad = declinationDeg * PI / 180.0;
-            heading += declinationRad;
+            //float declinationDeg = services::gps::magneticDeclination();
+            //float declinationRad = declinationDeg * PI / 180.0;
+            //heading += declinationRad;
 
             // handle wrapping (negative degrees or degrees over 360)
             if (heading < 0) {

@@ -2,16 +2,24 @@
 
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
-
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 #include <ArduinoJson.h>
-
 #include <cstring>
 
+#include "services/radar_location.h"
+#include "ui/radar_range.h"
 #include "config.h"
 
 namespace services::adsb {
 
 namespace {
+
+SemaphoreHandle_t s_lock = nullptr;
+Aircraft s_staging[kMaxAircraft];
+size_t s_staging_count = 0;
+volatile bool s_updated = false;
+TaskHandle_t s_worker = nullptr;
 
 constexpr char kApiBase[] = "https://opendata.adsb.fi/api/v3/lat/";
 constexpr float kKmPerNm = 1.852f;
@@ -22,6 +30,26 @@ Aircraft s_aircraft[kMaxAircraft];
 size_t s_aircraft_count = 0;
 PollFn s_poll_fn = nullptr;
 
+void workerTask(void*) {
+  for (;;) {
+    double fetch_lat = services::location::lat();
+    double fetch_lon = services::location::lon();
+    float fetch_km = ui::radar::fetchRadiusKm();
+    if (WiFi.status() == WL_CONNECTED) {
+      if (fetchUpdate(fetch_lat, fetch_lon, fetch_km)) {
+        
+        xSemaphoreTake(s_lock, portMAX_DELAY);
+        
+        memcpy(s_aircraft, s_staging, sizeof(s_staging));
+        s_aircraft_count = s_staging_count;
+
+        xSemaphoreGive(s_lock);
+        s_updated = true;
+      }
+    }
+    vTaskDelay(pdMS_TO_TICKS(config::kAdsbFetchIntervalMs));
+  }
+}
 void pollNetwork() {
   if (s_poll_fn != nullptr) {
     s_poll_fn();
@@ -197,13 +225,44 @@ void fillTagFields(Aircraft* ac, const JsonObject& plane) {
   formatAltitudeTag(plane, ac->alt, sizeof(ac->alt));
 }
 
-}  // namespace
+}  // public namespace begins
+
+AircraftReader::AircraftReader() {
+  if (s_lock != nullptr) {
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+  }
+}
+
+AircraftReader::~AircraftReader() {
+  if (s_lock != nullptr) {
+    xSemaphoreGive(s_lock);
+  }
+}
+const Aircraft* AircraftReader::list() const { return s_aircraft; }
+size_t AircraftReader::count() const { return s_aircraft_count; }
+
+void init() {
+  if (s_lock == nullptr) {
+    s_lock = xSemaphoreCreateMutex();
+  }
+}
+
+void startWorker() {
+  xTaskCreate(workerTask,
+              "adsb_worker",
+              10240,
+              nullptr,
+              1,
+              &s_worker);
+}
+
+bool consumeUpdate() {
+  if (!s_updated) return false;
+  s_updated = false;
+  return true;
+}
 
 void setPollFn(PollFn fn) { s_poll_fn = fn; }
-
-size_t aircraftCount() { return s_aircraft_count; }
-
-const Aircraft* aircraftList() { return s_aircraft; }
 
 bool fetchUpdate(double center_lat, double center_lon, float fetch_radius_km) {
   const float dist_nm = kmToNauticalMiles(fetch_radius_km);
@@ -265,16 +324,16 @@ bool fetchUpdate(double center_lat, double center_lon, float fetch_radius_km) {
       continue;
     }
 
-    s_aircraft[n].lat = plane["lat"].as<float>();
-    s_aircraft[n].lon = plane["lon"].as<float>();
-    s_aircraft[n].nose_deg = pickNoseHeading(plane);
-    s_aircraft[n].track_deg = pickTrackHeading(plane);
-    s_aircraft[n].gs_knots = pickGroundSpeed(plane);
-    fillTagFields(&s_aircraft[n], plane);
+    s_staging[n].lat = plane["lat"].as<float>();
+    s_staging[n].lon = plane["lon"].as<float>();
+    s_staging[n].nose_deg = pickNoseHeading(plane);
+    s_staging[n].track_deg = pickTrackHeading(plane);
+    s_staging[n].gs_knots = pickGroundSpeed(plane);
+    fillTagFields(&s_staging[n], plane);
     ++n;
   }
 
-  s_aircraft_count = n;
+  s_staging_count = n;
   Serial.printf("adsb: %u aircraft\n", static_cast<unsigned>(n));
   return true;
 }

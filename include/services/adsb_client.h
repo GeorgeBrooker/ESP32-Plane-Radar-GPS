@@ -15,10 +15,22 @@ struct Aircraft {
   char alt[12];
 };
 
-constexpr size_t kMaxAircraft = 64;
+class AircraftReader {
+  public:
+    AircraftReader();
+    ~AircraftReader();
+    AircraftReader(const AircraftReader&) = delete;
+    AircraftReader& operator=(const AircraftReader&) = delete;
 
-size_t aircraftCount();
-const Aircraft* aircraftList();
+    const Aircraft* list() const;
+    size_t count() const;
+};
+
+void init();
+void startWorker();
+bool consumeUpdate();
+
+constexpr size_t kMaxAircraft = 64;
 
 /** Hook invoked during long HTTP I/O (e.g. wifiLoop). Optional. */
 using PollFn = void (*)();
