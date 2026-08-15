@@ -10,6 +10,7 @@
 #include "hardware/display.h"
 #include "hardware/display_font.h"
 #include "services/adsb_client.h"
+#include "services/compass.h"
 #include "services/radar_location.h"
 #include "ui/radar_range.h"
 #include "ui/radar_theme.h"
@@ -721,14 +722,28 @@ void radarDisplayDraw() {
 
   if (ensureFrameSprite()) {
     renderFrame();
-    return;
+    s_frame.pushSprite(0, 0);
+  } else {
+    // Fallback when the sprite can't be allocated: draw straight to the panel.
+    const DrawScope scope(tft);
+    drawStaticGrid(tft);
+    drawAircraft();
   }
-
-  // Fallback when the sprite can't be allocated: draw straight to the panel.
-  const DrawScope scope(tft);
-  drawStaticGrid(tft);
-  drawAircraft();
+  
   tft.setTextDatum(textdatum_t::top_left);
+  
+  // Draw calibration notification if active
+  if (services::compass::isCalibrating()) {
+    const uint16_t bg_color = 0xF800;  // Red
+    const uint16_t text_color = 0xFFFF;  // White
+    const char* msg = "CALIBRATING";
+    
+    tft.setFont(&fonts::FreeSansBold9pt7b);
+    tft.setTextColor(text_color, bg_color);
+    tft.setTextDatum(textdatum_t::middle_center);
+    tft.drawString(msg, 120, 120);
+    tft.setTextDatum(textdatum_t::top_left);  // Reset for normal drawing
+  }
 }
 
 void radarDisplayRefreshAircraft() {

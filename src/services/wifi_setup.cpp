@@ -14,16 +14,20 @@
 #endif
 
 #include "config.h"
+#include "services/compass.h"
 #include "services/radar_location.h"
 #include "ui/radar_range.h"
 #include "ui/status_screens.h"
 
 portMUX_TYPE s_boot_mux = portMUX_INITIALIZER_UNLOCKED;
 volatile bool s_boot_tap_pending = false;
+volatile bool s_boot_double_tap_pending = false;
 volatile bool s_boot_is_down = false;
 volatile unsigned long s_boot_down_ms = 0;
+volatile unsigned long s_last_tap_ms = 0;
 bool s_long_press_handled = false;
 bool s_boot_interrupt_attached = false;
+constexpr unsigned long kBootDoubleTapWindowMs = 500;
 
 void IRAM_ATTR onBootButtonIsr() {
   const bool down = digitalRead(config::kBootPin) == LOW;
@@ -35,7 +39,14 @@ void IRAM_ATTR onBootButtonIsr() {
   } else if (s_boot_is_down) {
     const unsigned long held = now - s_boot_down_ms;
     if (held >= config::kBootTapMinMs && held < config::kBootResetHoldMs) {
-      s_boot_tap_pending = true;
+      // Tap detected; check if it's a double-tap
+      if (now - s_last_tap_ms < kBootDoubleTapWindowMs) {
+        s_boot_double_tap_pending = true;
+        s_boot_tap_pending = false;  // consume single tap
+      } else {
+        s_boot_tap_pending = true;
+      }
+      s_last_tap_ms = now;
     }
     s_boot_is_down = false;
   }
@@ -386,6 +397,16 @@ bool bootButtonConsumeTap() {
   }
   portEXIT_CRITICAL(&s_boot_mux);
   return tap;
+}
+
+bool bootButtonConsumeDoubleTap() {
+  portENTER_CRITICAL(&s_boot_mux);
+  const bool dtap = s_boot_double_tap_pending;
+  if (dtap) {
+    s_boot_double_tap_pending = false;
+  }
+  portEXIT_CRITICAL(&s_boot_mux);
+  return dtap;
 }
 
 void bootButtonPollLongPress() {
