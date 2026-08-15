@@ -30,7 +30,7 @@ unsigned long g_last_sensor_log_ms = 0;
 constexpr unsigned long kSensorLogIntervalMs = 2000;
 /** Redraw between ADS-B polls when GPS/heading moves enough to matter. */
 constexpr double kGpsRedrawThresholdDeg = 0.00005;  // ~5 m
-constexpr float kHeadingRedrawThresholdDeg = 2.0f;
+constexpr float kHeadingRedrawThresholdDeg = 1.0f;
 double g_last_drawn_lat = 0.0;
 double g_last_drawn_lon = 0.0;
 float g_last_drawn_heading = 0.0f;
@@ -178,5 +178,5 @@ void loop() {
     }
   }
 
-  delay(15);
+  delay(10);
 }

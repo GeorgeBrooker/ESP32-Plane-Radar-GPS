@@ -30,9 +30,9 @@ void init() {
     Serial.println(" -Found QMC5883P chip!");
 
     qmc.setMode(QMC5883P_MODE_NORMAL);
-    qmc.setODR(QMC5883P_ODR_50HZ);
+    qmc.setODR(QMC5883P_ODR_100HZ);
     qmc.setDSR(QMC5883P_DSR_2); // Relativly stable platform (not a fighter jet)
-    qmc.setOSR(QMC5883P_OSR_2); // 2,8,2 set high to help with vibration or nearby magnetic fields
+    qmc.setOSR(QMC5883P_OSR_4); // 2,8,2 set high to help with vibration or nearby magnetic fields
     qmc.setRange(QMC5883P_RANGE_2G); // Want to detect earth magnatic field
     qmc.setSetResetMode(QMC5883P_SETRESET_ON);
     s_available = true;
@@ -47,9 +47,9 @@ void poll() {
             float heading = atan2(y, x);
             
             // add magnetic declination
-            //float declinationDeg = services::gps::magneticDeclination();
-            //float declinationRad = declinationDeg * PI / 180.0;
-            //heading += declinationRad;
+            float declinationDeg = services::gps::magneticDeclination();
+            float declinationRad = declinationDeg * PI / 180.0;
+            heading += declinationRad;
 
             // handle wrapping (negative degrees or degrees over 360)
             if (heading < 0) {

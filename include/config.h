@@ -68,7 +68,7 @@ constexpr unsigned long kGpsFixStaleMs = 5000;
 // --- Compass (QMC5883P magnetometer) ---
 constexpr int kCompassPinSda = GPIO_NUM_5;
 constexpr int kCompassPinScl = GPIO_NUM_6;
-constexpr unsigned long kCompassPollIntervalMs = 100;
+constexpr unsigned long kCompassPollIntervalMs = 10;
 
 // --- UI colors (RGB565) — status screens ---
 constexpr uint16_t kColorBlack = 0x0000;
