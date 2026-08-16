@@ -87,8 +87,15 @@ void poll() {
                 heading -= 2 * PI;
             }
 
-            // convert to deg
-            s_heading_deg = heading * 180 / PI;
+            // convert to deg and rotate counter-clockwise by 90°.
+            // This shifts the reported cardinal directions so west occupies the
+            // former south position in the output heading.
+            s_heading_deg = heading * 180 / PI + 90.0f;
+            if (s_heading_deg < 0.0f) {
+                s_heading_deg += 360.0f;
+            } else if (s_heading_deg >= 360.0f) {
+                s_heading_deg -= 360.0f;
+            }
         }
     }
 }
