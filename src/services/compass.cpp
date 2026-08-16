@@ -4,6 +4,7 @@
 #include <Wire.h>
 #include <Adafruit_QMC5883P.h>
 #include <Preferences.h>
+#include <cmath>
 
 #include "services/gps.h"
 
@@ -22,6 +23,21 @@ namespace { // Begin Private Namespace
     float s_cal_y_offset = 0.0f;
     int16_t s_cal_x_min = 0, s_cal_x_max = 0;
     int16_t s_cal_y_min = 0, s_cal_y_max = 0;
+
+    float clampCompass(float heading) {
+        // 1. Get the remainder within the -360.0 to 360.0 range
+        float wrapped = std::fmod(heading, 360.0f);
+        
+        // 2. If the result is negative, add 360 to bring it into the positive domain
+        if (wrapped < 0.0f) {
+            wrapped += 360.0f;
+        }
+        
+        return wrapped;
+    }
+    float invertCompassDirection(float heading) {
+        return 360.0f - heading;
+    }
 } // End Private namespace
 
 // Begin Public namespace
@@ -40,7 +56,7 @@ void init() {
     qmc.setODR(QMC5883P_ODR_100HZ);
     qmc.setDSR(QMC5883P_DSR_8); // Relativly stable platform (not a fighter jet)
     qmc.setOSR(QMC5883P_OSR_8); // 2,8,2 set high to help with vibration or nearby magnetic fields
-    qmc.setRange(QMC5883P_RANGE_2G); // Want to detect earth magnatic field
+    qmc.setRange(QMC5883P_RANGE_8G); // Sensitivity essentially
     qmc.setSetResetMode(QMC5883P_SETRESET_ON);
     s_available = true;    
     // Load calibration from NVS if previously saved
@@ -76,26 +92,17 @@ void poll() {
             float heading = atan2(cal_y, cal_x);
             
             // add magnetic declination
-            float declinationDeg = services::gps::magneticDeclination();
-            float declinationRad = declinationDeg * PI / 180.0;
-            heading += declinationRad;
+            heading = heading * 180 / PI; // convert to deg
+            heading = heading + services::gps::magneticDeclination();
 
-            // handle wrapping (negative degrees or degrees over 360)
-            if (heading < 0) {
-                heading += 2 * PI;
-            } if (heading >= 2 * PI) {
-                heading -= 2 * PI;
-            }
-
-            // convert to deg and rotate counter-clockwise by 90°.
-            // This shifts the reported cardinal directions so west occupies the
-            // former south position in the output heading.
-            s_heading_deg = heading * 180 / PI + 90.0f;
-            if (s_heading_deg < 0.0f) {
-                s_heading_deg += 360.0f;
-            } else if (s_heading_deg >= 360.0f) {
-                s_heading_deg -= 360.0f;
-            }
+            // apply rotation offset
+            heading = heading - 90.0f;
+            
+            //invert (based on compass placement in device)
+            heading = invertCompassDirection(heading);
+            
+            // clamp final result to 360
+            s_heading_deg = clampCompass(heading);
         }
     }
 }
