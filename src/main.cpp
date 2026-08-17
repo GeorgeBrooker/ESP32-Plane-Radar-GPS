@@ -115,17 +115,6 @@ bool pollLocationSensors() {
   return moved;
 }
 
-void fetchAndDrawAircraft() {
-  const float fetch_km = ui::radar::fetchRadiusKm();
-  if (!services::adsb::fetchUpdate(services::location::lat(),
-                                   services::location::lon(), fetch_km)) {
-    handleBootButton();
-    return;
-  }
-  ui::radarDisplayRefreshAircraft();
-  handleBootButton();
-}
-
 }  // namespace
 
 void setup() {
