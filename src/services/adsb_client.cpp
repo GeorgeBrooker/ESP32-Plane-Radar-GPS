@@ -47,7 +47,7 @@ void workerTask(void*) {
         s_updated = true;
       }
     }
-    vTaskDelay(pdMS_TO_TICKS(config::kAdsbFetchIntervalMs));
+    delay(config::kAdsbFetchIntervalMs); // calls vTaskDelay under the hood (non blocking delay)
   }
 }
 void pollNetwork() {
