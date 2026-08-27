@@ -23,7 +23,7 @@ TaskHandle_t s_worker = nullptr;
 
 constexpr char kApiBase[] = "https://opendata.adsb.fi/api/v3/lat/";
 constexpr float kKmPerNm = 1.852f;
-constexpr int kConnectAttemptMs = 200;
+constexpr int kConnectAttemptMs = 5000;
 constexpr unsigned long kRequestTimeoutMs = 10000;
 
 Aircraft s_aircraft[kMaxAircraft];
@@ -239,11 +239,14 @@ bool fetchUpdate(double center_lat, double center_lon, float fetch_radius_km) {
   client.setInsecure();
 
   HTTPClient http;
+  // getStreamPtr() exposes raw HTTP/1.1 chunk frames, which are not JSON.
+  http.useHTTP10(true);
   if (!http.begin(client, url)) {
     Serial.println("adsb: http.begin failed");
     return false;
   }
 
+  http.addHeader("Accept-Encoding", "identity");
   http.setTimeout(kRequestTimeoutMs);
   const int code = performGetWithPoll(http);
   if (code != HTTP_CODE_OK) {
